@@ -12,7 +12,7 @@
     background: #f1efe8;
     color: #111;
   }
-  .wrap { max-width: 420px; margin: 0 auto; padding: 20px 16px 40px; }
+  .wrap { max-width: 380px; margin: 0 auto; padding: 20px 16px 40px; }
   h1 { font-size: 19px; margin: 0 0 4px; font-weight: 500; }
   .sub { font-size: 13px; color: #666; margin: 0 0 16px; }
   .slot {
@@ -26,7 +26,7 @@
   .photo-wrap { position: relative; width: 100%; aspect-ratio: 1/1; border-radius: 16px; overflow: hidden; }
   .photo-layer {
     position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-    opacity: 0; transform: translateX(28px);
+    opacity: 0; transform: translateX(-28px);
     transition: opacity .55s ease, transform .55s cubic-bezier(.4,0,.2,1);
     z-index: 1;
   }
@@ -59,39 +59,20 @@
   .hidden { display: none !important; }
   .loading { text-align: center; color: #999; font-size: 13px; padding: 40px 0; }
 
-  /* --- pembatas antar section --- */
-  .section-divider { border-top: 0.5px solid #d8d5cb; margin: 26px 0 18px; }
-  .section-title { font-size: 16px; font-weight: 500; margin: 0 0 2px; }
-  .section-sub { font-size: 12px; color: #666; margin: 0 0 14px; }
-
-  /* --- panel hasil / leaderboard --- */
-  .stage-visual {
-    position: relative; width: 100%; aspect-ratio: 4/3; border-radius: 16px; overflow: hidden;
-    margin-bottom: 16px;
-  }
-  .stage-layer {
-    position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
-    opacity: 0; transform: translateX(28px);
-    transition: opacity .55s ease, transform .55s cubic-bezier(.4,0,.2,1);
-    z-index: 1;
-  }
-  .stage-layer.active { opacity: 1; transform: translateX(0); z-index: 2; }
-  .stage-dot { width: 64px; height: 64px; border-radius: 50%; background: #fff; margin-bottom: 10px; opacity: 0.9; }
-  .stage-name { font-size: 16px; font-weight: 500; margin: 0 0 2px; color: #fff; }
-  .stage-tag { font-size: 11px; color: rgba(255,255,255,0.75); margin: 0; }
-
+  .live { margin-top: 20px; padding-top: 16px; border-top: 0.5px solid #d8d5cb; }
+  .liveTitle { font-size: 13px; font-weight: 500; margin: 0 0 10px; color: #333; }
   .liveCol { margin-bottom: 14px; }
   .liveLabel { font-size: 11px; color: #999; margin: 0 0 6px; text-transform: uppercase; letter-spacing: .02em; }
   .liveRow { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
   .liveRow .rank { font-size: 11px; color: #999; width: 12px; }
   .liveRow .sw { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; border: 0.5px solid #ddd; }
   .liveRow .info { flex: 1; min-width: 0; }
-  .liveRow .name { font-size: 12px; margin: 0 0 3px; color: #333; }
-  .liveRow .bar { background: #fff; border-radius: 4px; height: 5px; overflow: hidden; }
+  .liveRow .name { font-size: 11px; margin: 0 0 3px; color: #333; }
+  .liveRow .bar { background: #f1efe8; border-radius: 4px; height: 4px; overflow: hidden; }
   .liveRow .bar-fill { height: 100%; transition: width .8s ease; }
-  .liveRow .pct { font-size: 11px; color: #999; width: 30px; text-align: right; }
+  .liveRow .pct { font-size: 10px; color: #999; width: 28px; text-align: right; }
   .liveEmpty { font-size: 11px; color: #999; margin: 0; }
-  .liveTotal { font-size: 11px; color: #999; margin: 10px 0 0; }
+  .liveTotal { font-size: 11px; color: #999; margin: 8px 0 0; }
 </style>
 </head>
 <body>
@@ -99,7 +80,6 @@
   <h1>Vote warna Oximeter FOX 1</h1>
   <p class="sub">Pilih 2 warna: satu maskulin, satu feminin</p>
   <div id="loadingMsg" class="loading">Memuat data warna...</div>
-
   <div id="app" class="hidden">
 
     <div class="slot"><span class="lbl">Maskulin: <span class="val" id="slotMLabel">belum dipilih</span></span>
@@ -126,21 +106,18 @@
     <p class="msg err hidden" id="errMsg"></p>
     <p class="msg info hidden" id="lockedMsg">Vote sudah terkirim. Pilihan tidak bisa diubah lagi.</p>
 
-    <div class="section-divider"></div>
-    <p class="section-title">Hasil vote</p>
-    <p class="section-sub">Update otomatis, bisa dilihat semua orang</p>
-
-    <div class="stage-visual" id="stageVisual"></div>
-
-    <div class="liveCol">
-      <p class="liveLabel">Top maskulin</p>
-      <div id="liveM"></div>
+    <div class="live" id="liveResults">
+      <p class="liveTitle">Hasil sementara</p>
+      <div class="liveCol">
+        <p class="liveLabel">Top maskulin</p>
+        <div id="liveM"></div>
+      </div>
+      <div class="liveCol">
+        <p class="liveLabel">Top feminin</p>
+        <div id="liveF"></div>
+      </div>
+      <p class="liveTotal" id="liveTotal"></p>
     </div>
-    <div class="liveCol">
-      <p class="liveLabel">Top feminin</p>
-      <div id="liveF"></div>
-    </div>
-    <p class="liveTotal" id="liveTotal"></p>
 
   </div>
 </div>
@@ -150,24 +127,15 @@
   var API_URL = 'https://script.google.com/macros/s/AKfycbxo8klY5jDPAHeSpgKVdZ9jG5AlP8Fd6aWqnVUhFABPkuXpL61j12uq7LF_kwIBTTsLnQ/exec';
 
   var candidates = [];
+  var idx = 0;
   var slots = { m: null, f: null };
   var locked = false;
+  var auto = null;
+  var liveTimer = null;
+  var layers = [];
   var SLIDE_MS = 560;
 
-  // --- picker (vote) ---
-  var pickIdx = 0;
-  var pickLayers = [];
-  var pickAuto = null;
-
-  // --- stage (leaderboard visual) ---
-  var stageIdx = 0;
-  var stageLayers = [];
-  var stageAuto = null;
-
-  var liveTimer = null;
-
   var photoWrap = document.getElementById('photoWrap');
-  var stageVisual = document.getElementById('stageVisual');
   var cName = document.getElementById('cName');
   var cKesan = document.getElementById('cKesan');
   var dots = document.getElementById('dots');
@@ -197,94 +165,95 @@
   }
   var token = getToken();
 
-  // ============================================================
-  // PICKER (kartu pilih warna)
-  // ============================================================
-  function buildPickLayers() {
+  function buildLayers() {
     candidates.forEach(function (c, i) {
       var layer = document.createElement('div');
       layer.className = 'photo-layer' + (i === 0 ? ' active' : '');
       layer.style.background = c.hex;
-      layer.style.transform = i === 0 ? 'translateX(0)' : 'translateX(28px)';
+      // posisi tunggu default: di sebelah KIRI, siap masuk ke kanan saat tombol "next" (kanan) ditekan
+      layer.style.transform = i === 0 ? 'translateX(0)' : 'translateX(-28px)';
       var img = document.createElement('img');
       img.src = c.img;
       img.alt = c.name;
       img.onerror = function () { img.style.display = 'none'; };
       layer.appendChild(img);
       photoWrap.insertBefore(layer, photoWrap.firstChild);
-      pickLayers.push(layer);
+      layers.push(layer);
     });
   }
 
   function updateMeta() {
-    var c = candidates[pickIdx];
+    var c = candidates[idx];
     cName.textContent = c.name;
     cKesan.textContent = c.kesan;
-    dots.textContent = (pickIdx + 1) + ' / ' + candidates.length;
+    dots.textContent = (idx + 1) + ' / ' + candidates.length;
     slotMLabel.textContent = slots.m === null ? 'belum dipilih' : candidates[slots.m].name;
     slotFLabel.textContent = slots.f === null ? 'belum dipilih' : candidates[slots.f].name;
     undoM.classList.toggle('hidden', slots.m === null || locked);
     undoF.classList.toggle('hidden', slots.f === null || locked);
-    pickM.textContent = slots.m === pickIdx ? 'Batal maskulin' : 'Tandai maskulin';
-    pickF.textContent = slots.f === pickIdx ? 'Batal feminin' : 'Tandai feminin';
-    pickM.disabled = locked || slots.f === pickIdx;
-    pickF.disabled = locked || slots.m === pickIdx;
+    pickM.textContent = slots.m === idx ? 'Batal maskulin' : 'Tandai maskulin';
+    pickF.textContent = slots.f === idx ? 'Batal feminin' : 'Tandai feminin';
+    pickM.disabled = locked || slots.f === idx;
+    pickF.disabled = locked || slots.m === idx;
   }
 
-  function showPickLayer(newIdx, dir) {
-    if (newIdx === pickIdx) { updateMeta(); return; }
-    var old = pickLayers[pickIdx];
-    var next = pickLayers[newIdx];
-    var prevIdx = pickIdx;
+  // dir: +1 = "kanan" (next)  -> animasi bergerak ke KANAN (lama keluar kanan, baru masuk dari kiri)
+  // dir: -1 = "kiri" (prev)   -> animasi bergerak ke KIRI  (lama keluar kiri, baru masuk dari kanan)
+  function showLayer(newIdx, dir) {
+    if (newIdx === idx) { updateMeta(); return; }
+    var old = layers[idx];
+    var next = layers[newIdx];
+    var prevIdx = idx;
 
     old.classList.remove('active');
-    old.style.transform = 'translateX(' + (dir >= 0 ? '-28px' : '28px') + ')';
+    old.style.transform = 'translateX(' + (dir >= 0 ? '28px' : '-28px') + ')';
 
     next.style.transform = 'translateX(0)';
     next.classList.add('active');
 
-    pickIdx = newIdx;
+    idx = newIdx;
     updateMeta();
 
     setTimeout(function () {
-      pickLayers[prevIdx].style.transform = 'translateX(' + (dir >= 0 ? '28px' : '-28px') + ')';
+      layers[prevIdx].style.transform = 'translateX(' + (dir >= 0 ? '-28px' : '28px') + ')';
     }, SLIDE_MS);
   }
 
-  function stepPick(dir) {
-    var newIdx = (pickIdx + dir + candidates.length) % candidates.length;
-    showPickLayer(newIdx, dir);
-    resetPickAuto();
+  function step(dir) {
+    var newIdx = (idx + dir + candidates.length) % candidates.length;
+    showLayer(newIdx, dir);
+    resetAuto();
   }
 
-  function resetPickAuto() {
-    if (pickAuto) clearInterval(pickAuto);
-    pickAuto = setInterval(function () {
-      var newIdx = (pickIdx + 1) % candidates.length;
-      showPickLayer(newIdx, 1);
+  function resetAuto() {
+    if (auto) clearInterval(auto);
+    auto = setInterval(function () {
+      var newIdx = (idx + 1) % candidates.length;
+      showLayer(newIdx, 1);
     }, 4000);
   }
 
-  document.getElementById('prevBtn').onclick = function () { stepPick(-1); };
-  document.getElementById('nextBtn').onclick = function () { stepPick(1); };
+  document.getElementById('prevBtn').onclick = function () { step(-1); };
+  document.getElementById('nextBtn').onclick = function () { step(1); };
 
   var touchX = null;
   card.addEventListener('touchstart', function (e) { touchX = e.touches[0].clientX; });
   card.addEventListener('touchend', function (e) {
     if (touchX === null) return;
     var dx = e.changedTouches[0].clientX - touchX;
-    if (Math.abs(dx) > 40) { stepPick(dx > 0 ? -1 : 1); }
+    // geser jari ke kanan (dx>0) = balik ke sebelumnya, geser ke kiri (dx<0) = lanjut ke berikutnya
+    if (Math.abs(dx) > 40) { step(dx > 0 ? -1 : 1); }
     touchX = null;
   });
 
-  pickM.onclick = function () { if (locked) return; slots.m = slots.m === pickIdx ? null : pickIdx; errMsg.classList.add('hidden'); updateMeta(); };
-  pickF.onclick = function () { if (locked) return; slots.f = slots.f === pickIdx ? null : pickIdx; errMsg.classList.add('hidden'); updateMeta(); };
+  pickM.onclick = function () { if (locked) return; slots.m = slots.m === idx ? null : idx; errMsg.classList.add('hidden'); updateMeta(); };
+  pickF.onclick = function () { if (locked) return; slots.f = slots.f === idx ? null : idx; errMsg.classList.add('hidden'); updateMeta(); };
   undoM.onclick = function () { slots.m = null; updateMeta(); };
   undoF.onclick = function () { slots.f = null; updateMeta(); };
 
   function lockUI() {
     locked = true;
-    if (pickAuto) clearInterval(pickAuto);
+    if (auto) clearInterval(auto);
     card.classList.add('hidden');
     dots.classList.add('hidden');
     submitBtn.classList.add('hidden');
@@ -323,43 +292,7 @@
       });
   };
 
-  // ============================================================
-  // STAGE (visual besar untuk hasil, morph otomatis terus-menerus)
-  // ============================================================
-  function buildStageLayers() {
-    candidates.forEach(function (c, i) {
-      var l = document.createElement('div');
-      l.className = 'stage-layer' + (i === 0 ? ' active' : '');
-      l.style.background = c.hex;
-      l.style.transform = i === 0 ? 'translateX(0)' : 'translateX(28px)';
-      l.innerHTML = '<div class="stage-dot"></div><p class="stage-name">' + c.name + '</p><p class="stage-tag">Elitech pulse oximeter</p>';
-      stageVisual.appendChild(l);
-      stageLayers.push(l);
-    });
-  }
-
-  function stageMorph() {
-    var newIdx = (stageIdx + 1) % candidates.length;
-    var old = stageLayers[stageIdx];
-    var next = stageLayers[newIdx];
-    var prevIdx = stageIdx;
-
-    old.classList.remove('active');
-    old.style.transform = 'translateX(-28px)';
-
-    next.style.transform = 'translateX(0)';
-    next.classList.add('active');
-
-    stageIdx = newIdx;
-
-    setTimeout(function () {
-      stageLayers[prevIdx].style.transform = 'translateX(28px)';
-    }, SLIDE_MS);
-  }
-
-  // ============================================================
-  // HASIL / LEADERBOARD
-  // ============================================================
+  // --- hasil realtime ---
   function renderLive(el, counts, total) {
     el.innerHTML = '';
     var entries = Object.keys(counts).map(function (name) { return { name: name, n: counts[name] }; });
@@ -394,23 +327,16 @@
       .catch(function () {});
   }
 
-  // ============================================================
-  // INIT
-  // ============================================================
+  // Muat data warna, lalu cek status vote sebelumnya
   fetch(API_URL + '?action=warna')
     .then(function (r) { return r.json(); })
     .then(function (data) {
       candidates = data;
-      buildPickLayers();
-      buildStageLayers();
-
+      buildLayers();
       loadingMsg.classList.add('hidden');
       app.classList.remove('hidden');
-
-      stageAuto = setInterval(stageMorph, 4000);
       loadLive();
       liveTimer = setInterval(loadLive, 8000);
-
       return fetch(API_URL + '?action=status&token=' + encodeURIComponent(token));
     })
     .then(function (r) { return r.json(); })
@@ -421,7 +347,7 @@
         lockUI();
       } else {
         updateMeta();
-        resetPickAuto();
+        resetAuto();
       }
     })
     .catch(function (err) {
