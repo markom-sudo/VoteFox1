@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hasil vote warna Oximeter FOX 1</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; background: #f1efe8; }
+  .wrap { max-width: 680px; margin: 0 auto; padding: 24px; }
+  h1 { font-size: 19px; font-weight: 500; margin: 0 0 4px; }
+  .sub { font-size: 13px; color: #666; margin: 0 0 18px; }
+  .stage { border-radius: 16px; padding: 28px; display: flex; gap: 20px; align-items: stretch; }
+  .visual { flex: 1.3; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; min-height: 220px; }
+  .layer { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0; transition: opacity 1s ease; }
+  .layer.active { opacity: 1; }
+  .dot { width: 84px; height: 84px; border-radius: 50%; background: #fff; margin-bottom: 14px; opacity: 0.9; }
+  .mname { font-size: 18px; font-weight: 500; margin: 0 0 4px; color: #fff; }
+  .mtag { font-size: 12px; color: rgba(255,255,255,0.75); margin: 0; }
+  .panel { flex: 1; background: #fff; border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+  .panel h3 { font-size: 13px; color: #666; margin: 0; font-weight: 400; }
+  .row { display: flex; align-items: center; gap: 8px; }
+  .row .rank { font-size: 12px; color: #999; width: 14px; }
+  .row .sw { width: 14px; height: 14px; border-radius: 50%; border: 0.5px solid #ddd; flex-shrink: 0; }
+  .row .info { flex: 1; min-width: 0; }
+  .row .name { font-size: 12px; margin: 0 0 3px; color: #222; }
+  .row .bar { background: #f1efe8; border-radius: 4px; height: 5px; overflow: hidden; }
+  .row .bar-fill { height: 100%; transition: width 1s ease; }
+  .row .pct { font-size: 11px; color: #999; width: 30px; text-align: right; }
+  .total { font-size: 12px; color: #999; margin-top: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Vote warna Oximeter FOX 1</h1>
+  <p class="sub">Warna terpopuler saat ini</p>
+  <div class="stage" id="stage">
+    <div class="visual" id="visual"></div>
+    <div class="panel">
+      <h3>Top warna maskulin</h3>
+      <div id="listM"></div>
+      <h3>Top warna feminin</h3>
+      <div id="listF"></div>
+      <p class="total" id="total"></p>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ISI DENGAN URL WEB APP APPS SCRIPT KAMU (hasil Deploy > Web app) - sama dengan di Index.html
+  var API_URL = 'PASTE_URL_WEB_APP_DISINI';
+
+  var candidates = [];
+  var idx = 0;
+  var visual = document.getElementById('visual');
+  var listM = document.getElementById('listM');
+  var listF = document.getElementById('listF');
+  var totalEl = document.getElementById('total');
+  var layers = [];
+
+  function buildLayers() {
+    candidates.forEach(function (c, i) {
+      var l = document.createElement('div');
+      l.className = 'layer' + (i === 0 ? ' active' : '');
+      l.style.background = c.hex;
+      l.innerHTML = '<div class="dot"></div><p class="mname">' + c.name + '</p><p class="mtag">Elitech pulse oximeter</p>';
+      visual.appendChild(l);
+      layers.push(l);
+    });
+  }
+
+  function morph() {
+    layers.forEach(function (l, i) { l.classList.toggle('active', i === idx); });
+    idx = (idx + 1) % candidates.length;
+  }
+
+  function renderList(el, counts, total) {
+    el.innerHTML = '';
+    var entries = Object.keys(counts).map(function (name) { return { name: name, n: counts[name] }; });
+    entries.sort(function (a, b) { return b.n - a.n; });
+    entries.slice(0, 3).forEach(function (e, i) {
+      var cand = candidates.find(function (c) { return c.name === e.name; }) || { hex: '#ccc' };
+      var pct = total > 0 ? Math.round((e.n / total) * 100) : 0;
+      var row = document.createElement('div');
+      row.className = 'row';
+      row.innerHTML =
+        '<span class="rank">' + (i + 1) + '</span>' +
+        '<span class="sw" style="background:' + cand.hex + '"></span>' +
+        '<div class="info"><p class="name">' + e.name + '</p>' +
+        '<div class="bar"><div class="bar-fill" style="width:' + pct + '%; background:' + cand.hex + '"></div></div></div>' +
+        '<span class="pct">' + pct + '%</span>';
+      el.appendChild(row);
+    });
+    if (entries.length === 0) {
+      el.innerHTML = '<p class="total">Belum ada suara.</p>';
+    }
+  }
+
+  function loadResults() {
+    fetch(API_URL + '?action=results')
+      .then(function (r) { return r.json(); })
+      .then(function (res) {
+        renderList(listM, res.countM, res.total);
+        renderList(listF, res.countF, res.total);
+        totalEl.textContent = res.total + ' suara masuk' + (res.votingOpen ? '' : ' — voting ditutup');
+      });
+  }
+
+  fetch(API_URL + '?action=warna')
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      candidates = data;
+      buildLayers();
+      morph();
+      setInterval(morph, 4000);
+      loadResults();
+      setInterval(loadResults, 8000);
+    });
+</script>
+</body>
+</html>
