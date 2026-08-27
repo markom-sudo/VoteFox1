@@ -11,9 +11,14 @@
   h1 { font-size: 19px; font-weight: 500; margin: 0 0 4px; }
   .sub { font-size: 13px; color: #666; margin: 0 0 18px; }
   .stage { border-radius: 16px; padding: 28px; display: flex; gap: 20px; align-items: stretch; }
-  .visual { flex: 1.3; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; min-height: 220px; }
-  .layer { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0; transition: opacity 1s ease; }
-  .layer.active { opacity: 1; }
+  .visual { flex: 1.3; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; min-height: 220px; overflow: hidden; }
+  .layer {
+    position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    opacity: 0; transform: translateX(28px);
+    transition: opacity .55s ease, transform .55s cubic-bezier(.4,0,.2,1);
+    z-index: 1;
+  }
+  .layer.active { opacity: 1; transform: translateX(0); z-index: 2; }
   .dot { width: 84px; height: 84px; border-radius: 50%; background: #fff; margin-bottom: 14px; opacity: 0.9; }
   .mname { font-size: 18px; font-weight: 500; margin: 0 0 4px; color: #fff; }
   .mtag { font-size: 12px; color: rgba(255,255,255,0.75); margin: 0; }
@@ -57,12 +62,14 @@
   var listF = document.getElementById('listF');
   var totalEl = document.getElementById('total');
   var layers = [];
+  var SLIDE_MS = 560;
 
   function buildLayers() {
     candidates.forEach(function (c, i) {
       var l = document.createElement('div');
       l.className = 'layer' + (i === 0 ? ' active' : '');
       l.style.background = c.hex;
+      l.style.transform = i === 0 ? 'translateX(0)' : 'translateX(28px)';
       l.innerHTML = '<div class="dot"></div><p class="mname">' + c.name + '</p><p class="mtag">Elitech pulse oximeter</p>';
       visual.appendChild(l);
       layers.push(l);
@@ -70,8 +77,22 @@
   }
 
   function morph() {
-    layers.forEach(function (l, i) { l.classList.toggle('active', i === idx); });
-    idx = (idx + 1) % candidates.length;
+    var newIdx = (idx + 1) % candidates.length;
+    var old = layers[idx];
+    var next = layers[newIdx];
+    var prevIdx = idx;
+
+    old.classList.remove('active');
+    old.style.transform = 'translateX(-28px)';
+
+    next.style.transform = 'translateX(0)';
+    next.classList.add('active');
+
+    idx = newIdx;
+
+    setTimeout(function () {
+      layers[prevIdx].style.transform = 'translateX(28px)';
+    }, SLIDE_MS);
   }
 
   function renderList(el, counts, total) {
@@ -111,7 +132,6 @@
     .then(function (data) {
       candidates = data;
       buildLayers();
-      morph();
       setInterval(morph, 4000);
       loadResults();
       setInterval(loadResults, 8000);
