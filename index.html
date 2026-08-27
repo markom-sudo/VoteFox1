@@ -22,21 +22,26 @@
   .slot .lbl { font-size: 12px; color: #999; }
   .slot .val { color: #444; }
   .slot button { background: transparent; border: none; color: #999; padding: 2px; cursor: pointer; font-size: 16px; }
+
   .photo-wrap { position: relative; width: 100%; aspect-ratio: 1/1; border-radius: 16px; overflow: hidden; }
   .photo-layer {
     position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-    opacity: 0; transition: opacity 1s ease;
+    opacity: 0; transform: translateX(28px);
+    transition: opacity .55s ease, transform .55s cubic-bezier(.4,0,.2,1);
+    z-index: 1;
   }
-  .photo-layer.active { opacity: 1; }
-  .photo-layer img { max-width: 55%; max-height: 55%; object-fit: contain; }
+  .photo-layer.active { opacity: 1; transform: translateX(0); z-index: 2; }
+  /* gambar dibuat mengisi hampir seluruh frame */
+  .photo-layer img { max-width: 84%; max-height: 84%; object-fit: contain; }
+
   .nav-btn {
     position: absolute; top: 50%; transform: translateY(-50%);
     background: rgba(255,255,255,0.75); border: none; border-radius: 50%;
-    width: 32px; height: 32px; cursor: pointer; font-size: 16px;
+    width: 32px; height: 32px; cursor: pointer; font-size: 16px; z-index: 3;
   }
   .nav-btn.prev { left: 8px; } .nav-btn.next { right: 8px; }
-  .cname { font-size: 18px; font-weight: 500; margin: 14px 0 4px; text-align: center; transition: opacity 1s ease; }
-  .ckesan { font-size: 13px; color: #666; margin: 0 0 16px; text-align: center; transition: opacity 1s ease; }
+  .cname { font-size: 18px; font-weight: 500; margin: 14px 0 4px; text-align: center; }
+  .ckesan { font-size: 13px; color: #666; margin: 0 0 16px; text-align: center; }
   .pick-row { display: flex; gap: 8px; margin-bottom: 6px; }
   .pick-row button {
     flex: 1; padding: 10px; border-radius: 8px; border: 0.5px solid #ccc;
@@ -54,6 +59,22 @@
   .msg.info { color: #666; }
   .hidden { display: none !important; }
   .loading { text-align: center; color: #999; font-size: 13px; padding: 40px 0; }
+
+  /* --- panel hasil realtime --- */
+  .live { margin-top: 20px; padding-top: 16px; border-top: 0.5px solid #d8d5cb; }
+  .liveTitle { font-size: 13px; font-weight: 500; margin: 0 0 10px; color: #333; }
+  .liveCol { margin-bottom: 14px; }
+  .liveLabel { font-size: 11px; color: #999; margin: 0 0 6px; text-transform: uppercase; letter-spacing: .02em; }
+  .liveRow { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .liveRow .rank { font-size: 11px; color: #999; width: 12px; }
+  .liveRow .sw { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; border: 0.5px solid #ddd; }
+  .liveRow .info { flex: 1; min-width: 0; }
+  .liveRow .name { font-size: 11px; margin: 0 0 3px; color: #333; }
+  .liveRow .bar { background: #f1efe8; border-radius: 4px; height: 4px; overflow: hidden; }
+  .liveRow .bar-fill { height: 100%; transition: width .8s ease; }
+  .liveRow .pct { font-size: 10px; color: #999; width: 28px; text-align: right; }
+  .liveEmpty { font-size: 11px; color: #999; margin: 0; }
+  .liveTotal { font-size: 11px; color: #999; margin: 8px 0 0; }
 </style>
 </head>
 <body>
@@ -86,6 +107,20 @@
     <button id="submitBtn">Kirim vote</button>
     <p class="msg err hidden" id="errMsg"></p>
     <p class="msg info hidden" id="lockedMsg">Vote sudah terkirim. Pilihan tidak bisa diubah lagi.</p>
+
+    <div class="live" id="liveResults">
+      <p class="liveTitle">Hasil sementara</p>
+      <div class="liveCol">
+        <p class="liveLabel">Top maskulin</p>
+        <div id="liveM"></div>
+      </div>
+      <div class="liveCol">
+        <p class="liveLabel">Top feminin</p>
+        <div id="liveF"></div>
+      </div>
+      <p class="liveTotal" id="liveTotal"></p>
+    </div>
+
   </div>
 </div>
 
@@ -98,7 +133,9 @@
   var slots = { m: null, f: null };
   var locked = false;
   var auto = null;
+  var liveTimer = null;
   var layers = [];
+  var SLIDE_MS = 560;
 
   var photoWrap = document.getElementById('photoWrap');
   var cName = document.getElementById('cName');
@@ -116,6 +153,9 @@
   var card = document.getElementById('card');
   var loadingMsg = document.getElementById('loadingMsg');
   var app = document.getElementById('app');
+  var liveM = document.getElementById('liveM');
+  var liveF = document.getElementById('liveF');
+  var liveTotal = document.getElementById('liveTotal');
 
   function getToken() {
     var t = localStorage.getItem('voteToken_fox1');
@@ -132,6 +172,7 @@
       var layer = document.createElement('div');
       layer.className = 'photo-layer' + (i === 0 ? ' active' : '');
       layer.style.background = c.hex;
+      layer.style.transform = i === 0 ? 'translateX(0)' : 'translateX(28px)';
       var img = document.createElement('img');
       img.src = c.img;
       img.alt = c.name;
@@ -142,9 +183,8 @@
     });
   }
 
-  function render() {
+  function updateMeta() {
     var c = candidates[idx];
-    layers.forEach(function (l, i) { l.classList.toggle('active', i === idx); });
     cName.textContent = c.name;
     cKesan.textContent = c.kesan;
     dots.textContent = (idx + 1) + ' / ' + candidates.length;
@@ -158,32 +198,57 @@
     pickF.disabled = locked || slots.m === idx;
   }
 
-  function goto(n) {
-    idx = (n + candidates.length) % candidates.length;
-    render();
-    resetAuto();
-  }
-  function resetAuto() {
-    if (auto) clearInterval(auto);
-    auto = setInterval(function () { idx = (idx + 1) % candidates.length; render(); }, 4000);
+  // dir: 1 = geser ke kanan->kiri (maju), -1 = geser ke kiri->kanan (mundur)
+  function showLayer(newIdx, dir) {
+    if (newIdx === idx) { updateMeta(); return; }
+    var old = layers[idx];
+    var next = layers[newIdx];
+    var prevIdx = idx;
+
+    old.classList.remove('active');
+    old.style.transform = 'translateX(' + (dir >= 0 ? '-28px' : '28px') + ')';
+
+    next.style.transform = 'translateX(0)';
+    next.classList.add('active');
+
+    idx = newIdx;
+    updateMeta();
+
+    setTimeout(function () {
+      layers[prevIdx].style.transform = 'translateX(' + (dir >= 0 ? '28px' : '-28px') + ')';
+    }, SLIDE_MS);
   }
 
-  document.getElementById('prevBtn').onclick = function () { goto(idx - 1); };
-  document.getElementById('nextBtn').onclick = function () { goto(idx + 1); };
+  function step(dir) {
+    var newIdx = (idx + dir + candidates.length) % candidates.length;
+    showLayer(newIdx, dir);
+    resetAuto();
+  }
+
+  function resetAuto() {
+    if (auto) clearInterval(auto);
+    auto = setInterval(function () {
+      var newIdx = (idx + 1) % candidates.length;
+      showLayer(newIdx, 1);
+    }, 4000);
+  }
+
+  document.getElementById('prevBtn').onclick = function () { step(-1); };
+  document.getElementById('nextBtn').onclick = function () { step(1); };
 
   var touchX = null;
   card.addEventListener('touchstart', function (e) { touchX = e.touches[0].clientX; });
   card.addEventListener('touchend', function (e) {
     if (touchX === null) return;
     var dx = e.changedTouches[0].clientX - touchX;
-    if (Math.abs(dx) > 40) { dx > 0 ? goto(idx - 1) : goto(idx + 1); }
+    if (Math.abs(dx) > 40) { step(dx > 0 ? -1 : 1); }
     touchX = null;
   });
 
-  pickM.onclick = function () { if (locked) return; slots.m = slots.m === idx ? null : idx; errMsg.classList.add('hidden'); render(); };
-  pickF.onclick = function () { if (locked) return; slots.f = slots.f === idx ? null : idx; errMsg.classList.add('hidden'); render(); };
-  undoM.onclick = function () { slots.m = null; render(); };
-  undoF.onclick = function () { slots.f = null; render(); };
+  pickM.onclick = function () { if (locked) return; slots.m = slots.m === idx ? null : idx; errMsg.classList.add('hidden'); updateMeta(); };
+  pickF.onclick = function () { if (locked) return; slots.f = slots.f === idx ? null : idx; errMsg.classList.add('hidden'); updateMeta(); };
+  undoM.onclick = function () { slots.m = null; updateMeta(); };
+  undoF.onclick = function () { slots.f = null; updateMeta(); };
 
   function lockUI() {
     locked = true;
@@ -192,7 +257,7 @@
     dots.classList.add('hidden');
     submitBtn.classList.add('hidden');
     lockedMsg.classList.remove('hidden');
-    render();
+    updateMeta();
   }
 
   submitBtn.onclick = function () {
@@ -212,6 +277,7 @@
         submitBtn.disabled = false;
         if (res.ok) {
           lockUI();
+          loadLive();
         } else {
           errMsg.textContent = res.message || 'Gagal mengirim vote.';
           errMsg.classList.remove('hidden');
@@ -225,6 +291,41 @@
       });
   };
 
+  // --- hasil realtime ---
+  function renderLive(el, counts, total) {
+    el.innerHTML = '';
+    var entries = Object.keys(counts).map(function (name) { return { name: name, n: counts[name] }; });
+    entries.sort(function (a, b) { return b.n - a.n; });
+    if (entries.length === 0) {
+      el.innerHTML = '<p class="liveEmpty">Belum ada suara.</p>';
+      return;
+    }
+    entries.slice(0, 3).forEach(function (e, i) {
+      var cand = candidates.find(function (c) { return c.name === e.name; }) || { hex: '#ccc' };
+      var pct = total > 0 ? Math.round((e.n / total) * 100) : 0;
+      var row = document.createElement('div');
+      row.className = 'liveRow';
+      row.innerHTML =
+        '<span class="rank">' + (i + 1) + '</span>' +
+        '<span class="sw" style="background:' + cand.hex + '"></span>' +
+        '<div class="info"><p class="name">' + e.name + '</p>' +
+        '<div class="bar"><div class="bar-fill" style="width:' + pct + '%; background:' + cand.hex + '"></div></div></div>' +
+        '<span class="pct">' + pct + '%</span>';
+      el.appendChild(row);
+    });
+  }
+
+  function loadLive() {
+    fetch(API_URL + '?action=results')
+      .then(function (r) { return r.json(); })
+      .then(function (res) {
+        renderLive(liveM, res.countM, res.total);
+        renderLive(liveF, res.countF, res.total);
+        liveTotal.textContent = res.total + ' suara masuk' + (res.votingOpen ? '' : ' — voting ditutup');
+      })
+      .catch(function () {});
+  }
+
   // Muat data warna, lalu cek status vote sebelumnya
   fetch(API_URL + '?action=warna')
     .then(function (r) { return r.json(); })
@@ -233,6 +334,8 @@
       buildLayers();
       loadingMsg.classList.add('hidden');
       app.classList.remove('hidden');
+      loadLive();
+      liveTimer = setInterval(loadLive, 8000);
       return fetch(API_URL + '?action=status&token=' + encodeURIComponent(token));
     })
     .then(function (r) { return r.json(); })
@@ -242,7 +345,7 @@
         slots.f = candidates.findIndex(function (c) { return c.name === status.feminin; });
         lockUI();
       } else {
-        render();
+        updateMeta();
         resetAuto();
       }
     })
